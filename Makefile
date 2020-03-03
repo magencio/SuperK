@@ -25,13 +25,20 @@ endif
 ## kind-delete:
 ##      Delete the kind cluster created with kind-create.
 kind-delete:
+ifeq (1, $(shell kind get clusters | grep ${KIND_CLUSTER_NAME} | wc -l))
+	@echo "Deleting Cluster" 
 	kind delete cluster --name ${KIND_CLUSTER_NAME}
+else 
+	@echo "Cluster doesn't exist" 
+endif
 
 ## kind-recreate:
 ##      Create a new kind cluster for local testing after deleting it if it already exists. 
 ##      Use this if you start getting the following error when running kubectl commands:
 ##      "The connection to the server 127.0.0.1:40495 was refused - did you specify the right host or port?"
-kind-recreate: kind-delete kind-create
+kind-recreate: kind-delete
+	@echo "Creating Cluster"	
+	kind create cluster --name ${KIND_CLUSTER_NAME} --image=kindest/node:${K8S_NODE_IMAGE}
 
 ## fmt:
 ##      Format the code.
