@@ -1,0 +1,58 @@
+// For format details, see https://aka.ms/vscode-remote/devcontainer.json or the definition README at
+// https://github.com/microsoft/vscode-dev-containers/tree/master/containers/go
+{
+	"name": "Go",
+	"dockerFile": "Dockerfile",
+	"runArgs": [ 
+		"--cap-add=SYS_PTRACE",
+		"--security-opt",
+		"seccomp=unconfined",
+		// Mount go mod cache
+		"-v",    "superk-gomodcache:/go/pkg",
+		// Cache vscode extensions installs and homedir
+		"-v",    "superk-vscodecache:/root/.vscode-server",
+		// Keep command history 
+		"-v",    "superk-bashhistory:/root/commandhistory",
+		// Mount docker socket for docker builds
+		"-v",    "/var/run/docker.sock:/var/run/docker.sock",		
+		// Use host network
+		"--network=host",
+		// Mount Azure and Kubernetes auth
+		"-v",    "${env:HOME}${env:USERPROFILE}/.azure:/root/.azure",
+		"-v",    "${env:HOME}${env:USERPROFILE}/.gitconfig:/root/.gitconfig", // Required due to volume mount used for .vscode-server
+		"-v",    "${env:HOME}${env:USERPROFILE}/.kube:/root/.kube",
+		"-v",    "${env:HOME}${env:USERPROFILE}/.docker/config.json:/root/.docker/config.json"
+	],
+	"workspaceMount": "src=${localWorkspaceFolder},dst=/workspace,type=bind,consistency=delegated",
+	"workspaceFolder": "/workspace",
+
+	// Use 'settings' to set *default* container specific settings.json values on container create. 
+	// You can edit these settings after create using File > Preferences > Settings > Remote.
+	"settings": { 
+		"terminal.integrated.shell.linux": "/bin/bash",
+		"go.gopath": "/go",
+		"go.inferGopath": false,
+		"go.useLanguageServer": true,
+		"go.toolsEnvVars": {
+			"GO111MODULE": "on"
+		},
+		"remote.extensionKind": {
+			"ms-azuretools.vscode-docker": "workspace"
+		}
+	},
+	
+	// Use 'appPort' to create a container with published ports. If the port isn't working, be sure
+	// your server accepts connections from all interfaces (0.0.0.0 or '*'), not just localhost.
+	// "appPort": [],
+
+	// Uncomment the next line to run commands after the container is created.
+	// "postCreateCommand": "go version",
+
+	// Add the IDs of extensions you want installed when the container is created in the array below.
+	"extensions": [
+		"ms-vsliveshare.vsliveshare-pack",
+		"ms-azuretools.vscode-docker",
+		"ms-vscode.go",
+		"redhat.vscode-yaml"
+	]
+}

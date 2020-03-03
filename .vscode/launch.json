@@ -1,0 +1,33 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        // Execute "make debug" first to build and prepare the app for debugging
+        {
+            "name": "Connect to server",
+            "type": "go",
+            "request": "attach",
+            "mode": "remote",
+            "remotePath": "${workspaceFolder}",
+            "port": 2345,
+            "host": "127.0.0.1",
+            "program": "${workspaceFolder}/cmd",
+            "env": {},
+            "args": [],
+        }
+        // ,
+        // This will fail with error "open /dev/tty: no such device or address" when we call
+        // gocui.NewGui in main.go
+        // {
+        //     "name": "Launch main.go",
+        //     "type": "go",
+        //     "request": "launch",
+        //     "mode": "debug",
+        //     "program": "${workspaceFolder}/cmd",
+        //     "env": {},
+        //     "args": []
+        // }
+    ]
+}
