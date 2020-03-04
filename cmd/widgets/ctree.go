@@ -132,10 +132,14 @@ func (widget *CTreeWidget) SetKeyBindings(g *gocui.Gui) error {
 		return err
 	}
 
-	if err := g.SetKeybinding(widget.Name, gocui.MouseLeft, gocui.ModNone, widget.run); err != nil {
+	if err := g.SetKeybinding(widget.Name, gocui.MouseLeft, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
+		return widget.run(g, v, true)
+	}); err != nil {
 		return err
 	}
-	if err := g.SetKeybinding(widget.Name, gocui.KeyEnter, gocui.ModNone, widget.run); err != nil {
+	if err := g.SetKeybinding(widget.Name, gocui.KeyEnter, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
+		return widget.run(g, v, false)
+	}); err != nil {
 		return err
 	}
 
@@ -148,22 +152,22 @@ func (widget *CTreeWidget) SetKeyBindings(g *gocui.Gui) error {
 
 func (widget *CTreeWidget) moveCursorUp(g *gocui.Gui, v *gocui.View) error {
 	v.MoveCursor(0, -1, false)
-	return nil
+	return widget.run(g, v, true)
 }
 
 func (widget *CTreeWidget) moveCursorDown(g *gocui.Gui, v *gocui.View) error {
 	v.MoveCursor(0, 1, false)
-	return nil
+	return widget.run(g, v, true)
 }
 
 func (widget *CTreeWidget) moveCursorLeft(g *gocui.Gui, v *gocui.View) error {
 	v.MoveCursor(-1, 0, false)
-	return nil
+	return widget.run(g, v, true)
 }
 
 func (widget *CTreeWidget) moveCursorRight(g *gocui.Gui, v *gocui.View) error {
 	v.MoveCursor(1, 0, false)
-	return nil
+	return widget.run(g, v, true)
 }
 
 func (widget *CTreeWidget) copyToClipboard(g *gocui.Gui, v *gocui.View) error {
@@ -174,12 +178,12 @@ func (widget *CTreeWidget) copyToClipboard(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
-func (widget *CTreeWidget) run(g *gocui.Gui, v *gocui.View) error {
+func (widget *CTreeWidget) run(g *gocui.Gui, v *gocui.View, cacheFirst bool) error {
 	position := getCommandPosition(v)
 	if cmd := widget.commands.GetCmd(position); cmd != nil {
-		output := cmd.Run()
+		_ = cmd.Run(cacheFirst)
 
-		if err := widget.output.SetCommandOutput(g, cmd, output); err != nil {
+		if err := widget.output.SetCommandOutput(g, cmd); err != nil {
 			return err
 		}
 	}

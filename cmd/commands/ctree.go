@@ -9,6 +9,7 @@ import (
 // CTree structure represents a tree of kubectl commands
 type CTree struct {
 	Part     string
+	Cmd      *Cmd
 	Parent   *CTree
 	Children []*CTree
 }
@@ -101,11 +102,16 @@ func (tree *CTree) addChild(child *CTree) *CTree {
 //       7
 func (tree *CTree) GetCmd(position int) *Cmd {
 	current := tree.getTree(&position)
-	if current != nil {
-		return current.toCmd()
+
+	if current == nil {
+		return nil
 	}
 
-	return nil
+	if current.Cmd == nil {
+		current.Cmd = current.toCmd()
+	}
+
+	return current.Cmd
 }
 
 func (tree *CTree) getTree(position *int) *CTree {

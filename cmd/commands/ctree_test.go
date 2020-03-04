@@ -150,7 +150,7 @@ func TestCTree_MergeCommandInvalid(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-func TestCTree_GetCommand(t *testing.T) {
+func TestCTree_GetCmd(t *testing.T) {
 	// Arrange
 	tree, err := NewCTree([]string{
 		"kubectl -n kubeflow get pod",
@@ -167,9 +167,10 @@ func TestCTree_GetCommand(t *testing.T) {
 
 	// Assert
 	assert.Equal(t, expected, result)
+	assert.Equal(t, expected, tree.Children[0].Children[0].Children[1].Cmd)
 }
 
-func TestCTree_GetCommandInvalid(t *testing.T) {
+func TestCTree_GetCmdInvalid(t *testing.T) {
 	// Arrange
 	tree, err := NewCTree([]string{
 		"kubectl -n kubeflow get pod",

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"superk/cmd/commands"
 	"superk/cmd/utils"
+	"time"
 	"unicode"
 
 	"github.com/jroimartin/gocui"
@@ -33,10 +34,10 @@ func NewOutputWidget(
 }
 
 // SetCommandOutput sets the command and its output that this widget will show to user
-func (widget *OutputWidget) SetCommandOutput(g *gocui.Gui, command *commands.Cmd, output *string) error {
+func (widget *OutputWidget) SetCommandOutput(g *gocui.Gui, cmd *commands.Cmd) error {
 	// Refresh widget
-	widget.Title = fmt.Sprintf("Output [%s]", command.ToString())
-	widget.output = output
+	widget.Title = fmt.Sprintf("Output [%s] [%s]", cmd.ToString(), cmd.RunTime.Format(time.UnixDate))
+	widget.output = cmd.CmdOutput.Output
 	v, err := widget.Refresh(g)
 	if err != nil {
 		return err
