@@ -139,11 +139,6 @@ func (widget *TreeWidget) SetKeyBindings(g *gocui.Gui) error {
 		return err
 	}
 
-	if err := g.SetKeybinding(widget.Name, gocui.MouseLeft, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
-		return widget.run(g, v, true)
-	}); err != nil {
-		return err
-	}
 	if err := g.SetKeybinding(widget.Name, gocui.KeyEnter, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
 		return widget.run(g, v, false)
 	}); err != nil {
