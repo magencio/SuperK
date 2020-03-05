@@ -6,6 +6,11 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
+const (
+	// MsgWidgetName is the name of this widget
+	MsgWidgetName string = "msg"
+)
+
 // Check interface
 var _ IWidget = &MsgWidget{}
 
@@ -16,8 +21,8 @@ type MsgWidget struct {
 }
 
 // NewMsgWidget creates a new NewMsgWidget
-func NewMsgWidget(name string) *MsgWidget {
-	return &MsgWidget{Widget: Widget{Name: name}}
+func NewMsgWidget() *MsgWidget {
+	return &MsgWidget{Widget: Widget{Name: MsgWidgetName}}
 }
 
 // ShowMsg shows a popup message to user

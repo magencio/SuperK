@@ -8,32 +8,55 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
+const (
+	// CommandWidgetName is the name of this widget
+	CommandWidgetName  string = "command"
+	commandWidgetTitle string = "New Command"
+	commandWidgetHelp  string = "New Command \x7c \x1b[7mENTER\x1b[0m Add \x7c \x1b[7m^W\x1b[0m Paste \x7c \x1b[7m^D\x1b[0m Delete \x7c \x1b[7m^X\x1b[0m Exit"
+)
+
 // Check interface
 var _ IWidget = &CommandWidget{}
 
 // CommandWidget represents a kubectl command to run
 type CommandWidget struct {
 	Widget
-	editor *gocui.Editor
-	tree   *CTreeWidget
-	status *StatusBarWidget
+	editor  *gocui.Editor
+	widgets *Widgets
 }
 
 // NewCommandWidget creates a new CommandWidget
 func NewCommandWidget(
-	name string,
 	editor *gocui.Editor,
-	tree *CTreeWidget,
-	status *StatusBarWidget) *CommandWidget {
+	widgets *Widgets) *CommandWidget {
 	return &CommandWidget{
-		Widget: Widget{Name: name, Title: "New Command"},
-		editor: editor,
-		tree:   tree,
-		status: status}
+		Widget:  Widget{Name: CommandWidgetName, Title: commandWidgetTitle},
+		editor:  editor,
+		widgets: widgets}
 }
 
 // GetName returns the name of the widget
 func (widget *CommandWidget) GetName() string { return widget.Name }
+
+// SetContent resets the content of the widget to a new command
+func (widget *CommandWidget) SetContent(g *gocui.Gui, content string) error {
+	v, err := widget.Refresh(g)
+	if err != nil {
+		return err
+	}
+	v.Clear()
+	fmt.Fprintln(v, content)
+
+	// Set cursor at the end
+	_, cy := v.Cursor()
+	cx := len(content)
+	if err := v.SetCursor(cx, cy); err != nil {
+		return err
+	}
+
+	// Change focus back to this widget
+	return widget.SetAsCurrentView(g)
+}
 
 // Layout shows the contents of the widget on screen
 func (widget *CommandWidget) Layout(g *gocui.Gui, x, y int, w, h int) (*gocui.View, error) {
@@ -73,7 +96,7 @@ func (widget *CommandWidget) SetAsCurrentView(g *gocui.Gui) error {
 	if _, err := g.SetCurrentView(widget.Name); err != nil {
 		return err
 	}
-	if err := widget.status.SetStatus(g, "New Command \x7c \x1b[7mENTER\x1b[0m Add \x7c \x1b[7m^W\x1b[0m Paste \x7c \x1b[7m^D\x1b[0m Delete \x7c \x1b[7m^X\x1b[0m Exit"); err != nil {
+	if err := widget.widgets.Status().SetStatus(g, commandWidgetHelp); err != nil {
 		return err
 	}
 	return nil
@@ -105,7 +128,7 @@ func (widget *CommandWidget) run(g *gocui.Gui, v *gocui.View) error {
 		command = fmt.Sprintf("kubectl %s", command)
 	}
 
-	if err := widget.tree.AddCommand(g, command); err != nil {
+	if err := widget.widgets.Tree().AddCommand(g, command); err != nil {
 		return err
 	}
 
