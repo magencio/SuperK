@@ -11,6 +11,13 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
+const (
+	// OutputWidgetName is the name of this widget
+	OutputWidgetName  string = "output"
+	outputWidgetTitle string = "Output"
+	outputWidgetHelp  string = "Output \x7c \x1b[7m^C\x1b[0m Copy word \x7c \x1b[7m^L\x1b[0m Copy line \x7c \x1b[7m^X\x1b[0m Exit"
+)
+
 // Check interface
 var _ IWidget = &OutputWidget{}
 
@@ -19,18 +26,17 @@ type OutputWidget struct {
 	Widget
 	output    *string
 	clipboard *utils.Clipboard
-	status    *StatusBarWidget
+	widgets   *Widgets
 }
 
 // NewOutputWidget creates a new OutputWidget
 func NewOutputWidget(
-	name string,
 	clipboard *utils.Clipboard,
-	status *StatusBarWidget) *OutputWidget {
+	widgets *Widgets) *OutputWidget {
 	return &OutputWidget{
-		Widget:    Widget{Name: name, Title: "Output"},
+		Widget:    Widget{Name: OutputWidgetName, Title: outputWidgetTitle},
 		clipboard: clipboard,
-		status:    status}
+		widgets:   widgets}
 }
 
 // SetCommandOutput sets the command and its output that this widget will show to user
@@ -44,6 +50,7 @@ func (widget *OutputWidget) SetCommandOutput(g *gocui.Gui, cmd *commands.Cmd) er
 	}
 
 	// Scroll view and set cursor at the end of the output
+	// TODO: This is not taking wrapped lines into account!
 	_, height := v.Size()
 	lineCount := len(v.BufferLines())
 	originY := utils.Max(0, lineCount-height)
@@ -93,7 +100,7 @@ func (widget *OutputWidget) SetAsCurrentView(g *gocui.Gui) error {
 	if _, err := g.SetCurrentView(widget.Name); err != nil {
 		return err
 	}
-	if err := widget.status.SetStatus(g, "Output \x7c \x1b[7m^C\x1b[0m Copy word \x7c \x1b[7m^L\x1b[0m Copy line \x7c \x1b[7m^X\x1b[0m Exit"); err != nil {
+	if err := widget.widgets.Status().SetStatus(g, outputWidgetHelp); err != nil {
 		return err
 	}
 	return nil

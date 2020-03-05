@@ -7,33 +7,28 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
+const (
+	// MainScreenWidgetName is the name of this widget
+	MainScreenWidgetName string = "mainScreen"
+)
+
 // Check interface
 var _ IWidget = &MainScreenWidget{}
 
 // MainScreenWidget represents the main screen of the app
 type MainScreenWidget struct {
 	Widget
-	command  *CommandWidget
-	tree     *CTreeWidget
-	output   *OutputWidget
-	status   *StatusBarWidget
+	widgets  *Widgets
 	tabOrder []IWidget
 }
 
 // NewMainScreenWidget creates a new MainScreenWidget
 func NewMainScreenWidget(
-	name string,
-	command *CommandWidget,
-	tree *CTreeWidget,
-	output *OutputWidget,
-	status *StatusBarWidget) *MainScreenWidget {
+	widgets *Widgets) *MainScreenWidget {
 	return &MainScreenWidget{
-		Widget:   Widget{Name: name, Title: ""},
-		command:  command,
-		tree:     tree,
-		output:   output,
-		status:   status,
-		tabOrder: []IWidget{command, tree, output},
+		Widget:   Widget{Name: MainScreenWidgetName},
+		widgets:  widgets,
+		tabOrder: []IWidget{widgets.Command(), widgets.Tree(), widgets.Output()},
 	}
 }
 
@@ -64,24 +59,24 @@ func (widget *MainScreenWidget) Layout(g *gocui.Gui, x, y int, w, h int) (*gocui
 	v.Title = widget.Title
 	v.Frame = false
 
-	if _, err := widget.command.Layout(g, x, y, x+w-1, 3); err != nil {
+	if _, err := widget.widgets.Command().Layout(g, x, y, x+w-1, 3); err != nil {
 		return nil, err
 	}
 
-	if _, err := widget.tree.Layout(g, x, y+3, x+w/3-1, h-4); err != nil {
+	if _, err := widget.widgets.Tree().Layout(g, x, y+3, x+w/3-1, h-4); err != nil {
 		return nil, err
 	}
 
-	if _, err := widget.output.Layout(g, x+w/3-1, y+3, x+w-w/3, h-4); err != nil {
+	if _, err := widget.widgets.Output().Layout(g, x+w/3-1, y+3, x+w-w/3, h-4); err != nil {
 		return nil, err
 	}
 
-	if _, err := widget.status.Layout(g, x, y+h-2, x+w-1, 3); err != nil {
+	if _, err := widget.widgets.Status().Layout(g, x, y+h-2, x+w-1, 3); err != nil {
 		return nil, err
 	}
 
 	if g.CurrentView() == nil {
-		if err := widget.command.SetAsCurrentView(g); err != nil {
+		if err := widget.widgets.Command().SetAsCurrentView(g); err != nil {
 			return nil, err
 		}
 	}

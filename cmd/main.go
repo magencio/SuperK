@@ -3,21 +3,13 @@ package main
 import (
 	"log"
 	"superk/cmd/commands"
-	"superk/cmd/editors"
-	"superk/cmd/utils"
 	"superk/cmd/widgets"
 
 	"github.com/jroimartin/gocui"
 )
 
 const (
-	backupName           string = "superk_backup"
-	msgWidgetName        string = "msg"
-	statusWidgetName     string = "status"
-	outputWidgetName     string = "output"
-	treeWidgetName       string = "tree"
-	commandWidgetName    string = "command"
-	mainScreenWidgetName string = "mainScreen"
+	backupName string = "superk_backup"
 )
 
 func main() {
@@ -36,7 +28,7 @@ func main() {
 
 	widgets := createWidgets(commands)
 
-	setGuiManager(g, widgets[mainScreenWidgetName])
+	setGuiManager(g, widgets.MainScreen())
 
 	if err := setGlobalKeybindings(g, widgets); err != nil {
 		log.Panicln(err)
@@ -74,20 +66,8 @@ func createNewGui() (*gocui.Gui, error) {
 	return g, nil
 }
 
-func createWidgets(commands *commands.CTree) map[string]widgets.IWidget {
-	clipboard := utils.NewClipboard()
-	msg := widgets.NewMsgWidget(msgWidgetName)
-	status := widgets.NewStatusBarWidget(statusWidgetName)
-	output := widgets.NewOutputWidget(outputWidgetName, clipboard, status)
-	tree := widgets.NewCTreeWidget(treeWidgetName, commands, clipboard, output, status)
-	editor := editors.NewCustomEditor(clipboard)
-	command := widgets.NewCommandWidget(commandWidgetName, editor, tree, status)
-	mainScreen := widgets.NewMainScreenWidget(mainScreenWidgetName, command, tree, output, status)
-
-	return map[string]widgets.IWidget{
-		msg.GetName(): msg, status.GetName(): status, output.GetName(): output,
-		tree.GetName(): tree, command.GetName(): command, mainScreen.GetName(): mainScreen,
-	}
+func createWidgets(commands *commands.CTree) *widgets.Widgets {
+	return widgets.NewWidgets(commands)
 }
 
 func setGuiManager(g *gocui.Gui, widget widgets.IWidget) {
@@ -100,7 +80,7 @@ func setGuiManager(g *gocui.Gui, widget widgets.IWidget) {
 	})
 }
 
-func setGlobalKeybindings(g *gocui.Gui, allWidgets map[string]widgets.IWidget) error {
+func setGlobalKeybindings(g *gocui.Gui, allWidgets *widgets.Widgets) error {
 	if err := g.SetKeybinding("", gocui.KeyCtrlX, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
 		return gocui.ErrQuit // Exit the app
 	}); err != nil {
@@ -108,7 +88,7 @@ func setGlobalKeybindings(g *gocui.Gui, allWidgets map[string]widgets.IWidget) e
 	}
 
 	if err := g.SetKeybinding("", gocui.KeyTab, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
-		mainScreen := allWidgets[mainScreenWidgetName].(*widgets.MainScreenWidget)
+		mainScreen := allWidgets.MainScreen()
 		return mainScreen.OnTab(g)
 	}); err != nil {
 		return err
@@ -117,8 +97,8 @@ func setGlobalKeybindings(g *gocui.Gui, allWidgets map[string]widgets.IWidget) e
 	return nil
 }
 
-func setWidgetKeybindings(g *gocui.Gui, allWidgets map[string]widgets.IWidget) error {
-	for _, widget := range allWidgets {
+func setWidgetKeybindings(g *gocui.Gui, allWidgets *widgets.Widgets) error {
+	for _, widget := range allWidgets.Widgets() {
 		if err := widget.SetKeyBindings(g); err != nil {
 			return err
 		}

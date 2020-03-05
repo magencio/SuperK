@@ -8,36 +8,39 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
-// Check interface
-var _ IWidget = &CTreeWidget{}
+const (
+	// TreeWidgetName is the name of this widget
+	TreeWidgetName  string = "tree"
+	treeWidgetTitle string = "Commands"
+	treeWidgetHelp  string = "Commands \x7c \x1b[7mENTER\x1b[0m Update \x7c \x1b[7m^R\x1b[0m Reuse \x7c \x1b[7m^C\x1b[0m Copy \x7c \x1b[7m^D\x1b[0m Delete \x7c \x1b[7m^X\x1b[0m Exit"
+)
 
-// CTreeWidget represents a tree of kubectl commands
-type CTreeWidget struct {
+// Check interface
+var _ IWidget = &TreeWidget{}
+
+// TreeWidget represents a tree of kubectl commands
+type TreeWidget struct {
 	Widget
 	commands  *commands.CTree
 	clipboard *utils.Clipboard
-	output    *OutputWidget
-	status    *StatusBarWidget
+	widgets   *Widgets
 }
 
-// NewCTreeWidget creates a new CTreeWidget
-func NewCTreeWidget(
-	name string,
+// NewTreeWidget creates a new TreeWidget
+func NewTreeWidget(
 	commands *commands.CTree,
 	clipboard *utils.Clipboard,
-	output *OutputWidget,
-	status *StatusBarWidget) *CTreeWidget {
-	return &CTreeWidget{
-		Widget:    Widget{Name: name, Title: "Commands"},
+	widgets *Widgets) *TreeWidget {
+	return &TreeWidget{
+		Widget:    Widget{Name: TreeWidgetName, Title: treeWidgetTitle},
 		commands:  commands,
 		clipboard: clipboard,
-		output:    output,
-		status:    status,
+		widgets:   widgets,
 	}
 }
 
 // AddCommand adds a new command to the tree
-func (widget *CTreeWidget) AddCommand(g *gocui.Gui, command string) error {
+func (widget *TreeWidget) AddCommand(g *gocui.Gui, command string) error {
 	// Update tree
 	if err := widget.commands.MergeCommand(command); err != nil {
 		return err
@@ -64,14 +67,16 @@ func (widget *CTreeWidget) AddCommand(g *gocui.Gui, command string) error {
 	if err := widget.SetAsCurrentView(g); err != nil {
 		return err
 	}
-	return nil
+
+	// Run command
+	return widget.run(g, v, false)
 }
 
 // GetName returns the name of the widget
-func (widget *CTreeWidget) GetName() string { return widget.Name }
+func (widget *TreeWidget) GetName() string { return widget.Name }
 
 // Layout shows the contents of the widget on screen
-func (widget *CTreeWidget) Layout(g *gocui.Gui, x, y int, w, h int) (*gocui.View, error) {
+func (widget *TreeWidget) Layout(g *gocui.Gui, x, y int, w, h int) (*gocui.View, error) {
 	widget.X, widget.Y, widget.W, widget.H = x, y, w, h
 
 	v, err := g.SetView(widget.Name, x, y, x+w-1, y+h-1)
@@ -92,23 +97,29 @@ func (widget *CTreeWidget) Layout(g *gocui.Gui, x, y int, w, h int) (*gocui.View
 }
 
 // Refresh updates the contents of the widget on screen
-func (widget *CTreeWidget) Refresh(g *gocui.Gui) (*gocui.View, error) {
+func (widget *TreeWidget) Refresh(g *gocui.Gui) (*gocui.View, error) {
 	return widget.Layout(g, widget.X, widget.Y, widget.W, widget.H)
 }
 
 // SetAsCurrentView sets the widget as the current view
-func (widget *CTreeWidget) SetAsCurrentView(g *gocui.Gui) error {
-	if _, err := g.SetCurrentView(widget.Name); err != nil {
+func (widget *TreeWidget) SetAsCurrentView(g *gocui.Gui) error {
+	v, err := g.SetCurrentView(widget.Name)
+	if err != nil {
 		return err
 	}
-	if err := widget.status.SetStatus(g, "Commands \x7c \x1b[7mENTER\x1b[0m Execute \x7c \x1b[7m^C\x1b[0m Copy \x7c \x1b[7m^D\x1b[0m Delete \x7c \x1b[7m^X\x1b[0m Exit"); err != nil {
+
+	if err := widget.run(g, v, true); err != nil {
+		return err
+	}
+
+	if err := widget.widgets.Status().SetStatus(g, treeWidgetHelp); err != nil {
 		return err
 	}
 	return nil
 }
 
 // SetKeyBindings sets keybindings for the widget
-func (widget *CTreeWidget) SetKeyBindings(g *gocui.Gui) error {
+func (widget *TreeWidget) SetKeyBindings(g *gocui.Gui) error {
 	if err := g.SetKeybinding(widget.Name, gocui.KeyArrowUp, gocui.ModNone, widget.moveCursorUp); err != nil {
 		return err
 	}
@@ -119,10 +130,6 @@ func (widget *CTreeWidget) SetKeyBindings(g *gocui.Gui) error {
 		return err
 	}
 	if err := g.SetKeybinding(widget.Name, gocui.KeyArrowRight, gocui.ModNone, widget.moveCursorRight); err != nil {
-		return err
-	}
-
-	if err := g.SetKeybinding(widget.Name, gocui.KeyCtrlC, gocui.ModNone, widget.copyToClipboard); err != nil {
 		return err
 	}
 
@@ -143,6 +150,14 @@ func (widget *CTreeWidget) SetKeyBindings(g *gocui.Gui) error {
 		return err
 	}
 
+	if err := g.SetKeybinding(widget.Name, gocui.KeyCtrlR, gocui.ModNone, widget.reuse); err != nil {
+		return err
+	}
+
+	if err := g.SetKeybinding(widget.Name, gocui.KeyCtrlC, gocui.ModNone, widget.copyToClipboard); err != nil {
+		return err
+	}
+
 	if err := g.SetKeybinding(widget.Name, gocui.KeyCtrlD, gocui.ModNone, widget.delete); err != nil {
 		return err
 	}
@@ -150,27 +165,37 @@ func (widget *CTreeWidget) SetKeyBindings(g *gocui.Gui) error {
 	return nil
 }
 
-func (widget *CTreeWidget) moveCursorUp(g *gocui.Gui, v *gocui.View) error {
+func (widget *TreeWidget) moveCursorUp(g *gocui.Gui, v *gocui.View) error {
 	v.MoveCursor(0, -1, false)
 	return widget.run(g, v, true)
 }
 
-func (widget *CTreeWidget) moveCursorDown(g *gocui.Gui, v *gocui.View) error {
+func (widget *TreeWidget) moveCursorDown(g *gocui.Gui, v *gocui.View) error {
 	v.MoveCursor(0, 1, false)
 	return widget.run(g, v, true)
 }
 
-func (widget *CTreeWidget) moveCursorLeft(g *gocui.Gui, v *gocui.View) error {
+func (widget *TreeWidget) moveCursorLeft(g *gocui.Gui, v *gocui.View) error {
 	v.MoveCursor(-1, 0, false)
 	return widget.run(g, v, true)
 }
 
-func (widget *CTreeWidget) moveCursorRight(g *gocui.Gui, v *gocui.View) error {
+func (widget *TreeWidget) moveCursorRight(g *gocui.Gui, v *gocui.View) error {
 	v.MoveCursor(1, 0, false)
 	return widget.run(g, v, true)
 }
 
-func (widget *CTreeWidget) copyToClipboard(g *gocui.Gui, v *gocui.View) error {
+func (widget *TreeWidget) reuse(g *gocui.Gui, v *gocui.View) error {
+	position := getCommandPosition(v)
+	if cmd := widget.commands.GetCmd(position); cmd != nil {
+		if err := widget.widgets.Command().SetContent(g, cmd.ToString()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (widget *TreeWidget) copyToClipboard(g *gocui.Gui, v *gocui.View) error {
 	position := getCommandPosition(v)
 	if cmd := widget.commands.GetCmd(position); cmd != nil {
 		widget.clipboard.Content = cmd.ToString()
@@ -178,19 +203,19 @@ func (widget *CTreeWidget) copyToClipboard(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
-func (widget *CTreeWidget) run(g *gocui.Gui, v *gocui.View, cacheFirst bool) error {
+func (widget *TreeWidget) run(g *gocui.Gui, v *gocui.View, cacheFirst bool) error {
 	position := getCommandPosition(v)
 	if cmd := widget.commands.GetCmd(position); cmd != nil {
 		_ = cmd.Run(cacheFirst)
 
-		if err := widget.output.SetCommandOutput(g, cmd); err != nil {
+		if err := widget.widgets.Output().SetCommandOutput(g, cmd); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (widget *CTreeWidget) delete(g *gocui.Gui, v *gocui.View) error {
+func (widget *TreeWidget) delete(g *gocui.Gui, v *gocui.View) error {
 	position := getCommandPosition(v)
 	if err := widget.commands.RemoveCommand(position); err != nil {
 		return nil
